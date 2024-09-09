@@ -24,23 +24,42 @@
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
     <script>
+        // Obtener los parámetros de la URL
         var urlParams = new URLSearchParams(window.location.search);
         var lat = parseFloat(urlParams.get('lat'));
         var lon = parseFloat(urlParams.get('lon'));
         var destLat = parseFloat(urlParams.get('destLat'));
         var destLon = parseFloat(urlParams.get('destLon'));
         var track = urlParams.get('track') === 'true';
+        var notified = false; // Para evitar múltiples notificaciones
+
+        // Solicitar permiso para notificaciones
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+
+        function showNotification() {
+            if (Notification.permission === "granted") {
+                new Notification("Aviso de Llegada", {
+                    body: "El repartidor está llegando, prepárate.",
+                    icon: "https://example.com/icono.png" // Reemplaza con un enlace a tu icono
+                });
+            }
+        }
 
         if (!isNaN(lat) && !isNaN(lon) && !isNaN(destLat) && !isNaN(destLon)) {
+            // Inicializar el mapa centrado en la ubicación inicial
             var map = L.map('map').setView([lat, lon], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
 
+            // Agregar marcadores de inicio y destino
             var userMarker = L.marker([lat, lon]).addTo(map).bindPopup('Inicio').openPopup();
             var destinationMarker = L.marker([destLat, destLon]).addTo(map).bindPopup('Destino').openPopup();
 
+            // Crear control de rutas
             var routeControl = L.Routing.control({
                 waypoints: [
                     L.latLng(lat, lon),
@@ -54,11 +73,19 @@
                 addWaypoints: false
             }).addTo(map);
 
-            function updateDistance() {
-                var totalDistance = turf.distance(turf.point([lon, lat]), turf.point([destLon, destLat]), { units: 'kilometers' });
+            // Actualizar la distancia al destino
+            function updateDistance(newLat, newLon) {
+                var totalDistance = turf.distance(turf.point([newLon, newLat]), turf.point([destLon, destLat]), { units: 'kilometers' });
                 document.getElementById('distance-span').innerText = totalDistance.toFixed(2);
+
+                // Comprobar si está a menos de 400 metros (0.4 km)
+                if (totalDistance <= 0.4 && !notified) {
+                    notified = true; // Evitar múltiples notificaciones
+                    showNotification();
+                }
             }
 
+            // Verificar si se debe hacer el seguimiento en tiempo real
             if (track) {
                 navigator.geolocation.watchPosition(function (position) {
                     var newLat = position.coords.latitude;
@@ -70,13 +97,14 @@
                         L.latLng(destLat, destLon)
                     ]);
 
-                    updateDistance();
+                    updateDistance(newLat, newLon);
                 }, function (error) {
                     alert('Error en la geolocalización: ' + error.message);
                 }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
             }
 
-            updateDistance();
+            // Llamada inicial para actualizar la distancia
+            updateDistance(lat, lon);
         } else {
             alert('Las coordenadas proporcionadas no son válidas.');
         }
