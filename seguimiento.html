@@ -24,37 +24,68 @@
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
     <script>
-        var map = L.map('map').setView([-41.133472, -71.310278], 13); // Coordenadas iniciales de Bariloche
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
+        var urlParams = new URLSearchParams(window.location.search);
+        var lat = parseFloat(urlParams.get('lat'));
+        var lon = parseFloat(urlParams.get('lon'));
+        var destLat = parseFloat(urlParams.get('destLat'));
+        var destLon = parseFloat(urlParams.get('destLon'));
+        var track = urlParams.get('track') === 'true';
+        var notified = false;
 
-        var userMarker;
-        var destinationMarker = L.marker([-41.133472, -71.310278]).addTo(map).bindPopup('Destino').openPopup();
+        if (!isNaN(lat) && !isNaN(lon) && !isNaN(destLat) && !isNaN(destLon)) {
+            var map = L.map('map').setView([lat, lon], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
 
-        function fetchLocation() {
-            // Solicita la ubicación del servidor
-            fetch('location.txt')
-                .then(response => response.json())
-                .then(data => {
-                    var lat = data.lat;
-                    var lon = data.lon;
+            var userMarker = L.marker([lat, lon]).addTo(map).bindPopup('Inicio').openPopup();
+            var destinationMarker = L.marker([destLat, destLon]).addTo(map).bindPopup('Destino').openPopup();
 
-                    if (!userMarker) {
-                        userMarker = L.marker([lat, lon]).addTo(map).bindPopup('Repartidor').openPopup();
-                    } else {
-                        userMarker.setLatLng([lat, lon]);
-                    }
+            var routeControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(lat, lon),
+                    L.latLng(destLat, destLon)
+                ],
+                router: L.Routing.osrmv1({
+                    language: 'es',
+                    profile: 'driving'
+                }),
+                routeWhileDragging: true,
+                addWaypoints: false
+            }).addTo(map);
 
-                    var totalDistance = turf.distance(turf.point([lon, lat]), turf.point([-71.310278, -41.133472]), { units: 'kilometers' });
-                    document.getElementById('distance-span').innerText = totalDistance.toFixed(2);
-                })
-                .catch(error => console.error('Error al obtener la ubicación:', error));
+            function updateDistance(newLat, newLon) {
+                var totalDistance = turf.distance(turf.point([newLon, newLat]), turf.point([destLon, destLat]), { units: 'kilometers' });
+                document.getElementById('distance-span').innerText = totalDistance.toFixed(2);
+
+                if (totalDistance <= 0.4 && !notified) {
+                    notified = true;
+                    showNotification();
+                }
+            }
+
+            if (track) {
+                navigator.geolocation.watchPosition(function (position) {
+                    var newLat = position.coords.latitude;
+                    var newLon = position.coords.longitude;
+
+                    userMarker.setLatLng([newLat, newLon]);
+                    routeControl.setWaypoints([
+                        L.latLng(newLat, newLon),
+                        L.latLng(destLat, destLon)
+                    ]);
+
+                    updateDistance(newLat, newLon);
+                }, function (error) {
+                    alert('Error en la geolocalización: ' + error.message);
+                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            }
+
+            updateDistance(lat, lon);
+        } else {
+            alert('Las coordenadas proporcionadas no son válidas.');
         }
-
-        // Actualiza la ubicación cada 5 segundos
-        setInterval(fetchLocation, 5000);
     </script>
 </body>
 </html>
