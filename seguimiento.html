@@ -18,19 +18,24 @@
     <div id="map"></div>
     <p id="distance-info" class="h5">Distancia al destino: <span id="distance-span">0</span> km</p>
 
+    <!-- Añadir un elemento de audio para la alerta sonora -->
+    <audio id="alert-sound" src="audio/arrancamos.mp3" preload="auto"></audio>
+
     <!-- Carga de librerías -->
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
     <script>
+        // Obtener los parámetros de la URL
         var urlParams = new URLSearchParams(window.location.search);
         var lat = parseFloat(urlParams.get('lat'));
         var lon = parseFloat(urlParams.get('lon'));
         var destLat = parseFloat(urlParams.get('destLat'));
         var destLon = parseFloat(urlParams.get('destLon'));
         var track = urlParams.get('track') === 'true';
-        var notified = false;
+        var notified = false; // Controlar si ya se hizo la alerta
+        var startedMoving = false; // Controlar si el repartidor ha comenzado a moverse
 
         if (!isNaN(lat) && !isNaN(lon) && !isNaN(destLat) && !isNaN(destLon)) {
             var map = L.map('map').setView([lat, lon], 13);
@@ -59,9 +64,10 @@
                 var totalDistance = turf.distance(turf.point([newLon, newLat]), turf.point([destLon, destLat]), { units: 'kilometers' });
                 document.getElementById('distance-span').innerText = totalDistance.toFixed(2);
 
+                // Verificar si está a menos de 400 metros (0.4 km) y si no se ha alertado aún
                 if (totalDistance <= 0.4 && !notified) {
                     notified = true;
-                    showNotification();
+                    showNotification("¡Prepárate! Estoy a pocos metros de tu dirección.");
                 }
             }
 
@@ -76,6 +82,13 @@
                         L.latLng(destLat, destLon)
                     ]);
 
+                    // Comprobar si el repartidor ha comenzado a moverse
+                    if (!startedMoving) {
+                        startedMoving = true;
+                        showNotification("¡El repartidor ha comenzado a moverse!");
+                        playAlertSound();
+                    }
+
                     updateDistance(newLat, newLon);
                 }, function (error) {
                     alert('Error en la geolocalización: ' + error.message);
@@ -85,6 +98,17 @@
             updateDistance(lat, lon);
         } else {
             alert('Las coordenadas proporcionadas no son válidas.');
+        }
+
+        // Función para mostrar la notificación visual y reproducir el sonido
+        function showNotification(message) {
+            alert(message);
+        }
+
+        // Función para reproducir el sonido de alerta
+        function playAlertSound() {
+            var audio = document.getElementById('alert-sound');
+            audio.play();
         }
     </script>
 </body>
