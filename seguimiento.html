@@ -12,6 +12,15 @@
             height: 100vh;
             width: 100%;
         }
+        /* Estilo para el alert de inicio */
+        .alert-custom {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1051;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -20,6 +29,15 @@
 
     <!-- Añadir un elemento de audio para la alerta sonora -->
     <audio id="alert-sound" src="audio/arrancamos.mp3" preload="auto"></audio>
+    <audio id="near-alert-sound" src="audio/alerta-cerca.mp3" preload="auto"></audio>
+
+    <!-- Alertas de inicio y de proximidad -->
+    <div id="start-alert" class="alert alert-success alert-custom">
+        Comenzando el recorrido...
+    </div>
+    <div id="near-alert" class="alert alert-warning alert-custom">
+        ¡Prepárate! Estoy a pocos metros de tu dirección.
+    </div>
 
     <!-- Carga de librerías -->
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
@@ -34,8 +52,8 @@
         var destLat = parseFloat(urlParams.get('destLat'));
         var destLon = parseFloat(urlParams.get('destLon'));
         var track = urlParams.get('track') === 'true';
-        var notified = false; // Controlar si ya se hizo la alerta
-        var startedMoving = false; // Controlar si el repartidor ha comenzado a moverse
+        var notifiedStart = false; // Controlar si ya se hizo la alerta de inicio
+        var notifiedNear = false;  // Controlar si ya se hizo la alerta de proximidad
 
         if (!isNaN(lat) && !isNaN(lon) && !isNaN(destLat) && !isNaN(destLon)) {
             var map = L.map('map').setView([lat, lon], 13);
@@ -65,9 +83,9 @@
                 document.getElementById('distance-span').innerText = totalDistance.toFixed(2);
 
                 // Verificar si está a menos de 400 metros (0.4 km) y si no se ha alertado aún
-                if (totalDistance <= 0.4 && !notified) {
-                    notified = true;
-                    showNotification("¡Prepárate! Estoy a pocos metros de tu dirección.");
+                if (totalDistance <= 0.4 && !notifiedNear) {
+                    notifiedNear = true;
+                    showNearAlert();
                 }
             }
 
@@ -83,10 +101,9 @@
                     ]);
 
                     // Comprobar si el repartidor ha comenzado a moverse
-                    if (!startedMoving) {
-                        startedMoving = true;
-                        showNotification("¡El repartidor ha comenzado a moverse!");
-                        playAlertSound();
+                    if (!notifiedStart) {
+                        notifiedStart = true;
+                        showStartAlert();
                     }
 
                     updateDistance(newLat, newLon);
@@ -100,14 +117,29 @@
             alert('Las coordenadas proporcionadas no son válidas.');
         }
 
-        // Función para mostrar la notificación visual y reproducir el sonido
-        function showNotification(message) {
-            alert(message);
+        // Función para mostrar la notificación de inicio y reproducir el sonido
+        function showStartAlert() {
+            var alertDiv = document.getElementById('start-alert');
+            alertDiv.style.display = 'block'; // Mostrar el alert
+
+            setTimeout(function() {
+                alertDiv.style.display = 'none'; // Ocultar el alert después de 3 segundos
+            }, 3000);
+
+            var audio = document.getElementById('alert-sound');
+            audio.play();
         }
 
-        // Función para reproducir el sonido de alerta
-        function playAlertSound() {
-            var audio = document.getElementById('alert-sound');
+        // Función para mostrar la notificación de proximidad y reproducir el sonido
+        function showNearAlert() {
+            var alertDiv = document.getElementById('near-alert');
+            alertDiv.style.display = 'block'; // Mostrar el alert
+
+            setTimeout(function() {
+                alertDiv.style.display = 'none'; // Ocultar el alert después de 5 segundos
+            }, 5000);
+
+            var audio = document.getElementById('near-alert-sound');
             audio.play();
         }
     </script>
