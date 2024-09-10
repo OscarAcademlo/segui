@@ -89,27 +89,28 @@
                 }
             }
 
+            function fetchLocation() {
+                fetch('get_location.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.lat && data.lon) {
+                            var newLat = parseFloat(data.lat);
+                            var newLon = parseFloat(data.lon);
+
+                            userMarker.setLatLng([newLat, newLon]);
+                            routeControl.setWaypoints([
+                                L.latLng(newLat, newLon),
+                                L.latLng(destLat, destLon)
+                            ]);
+
+                            updateDistance(newLat, newLon);
+                        }
+                    })
+                    .catch(error => console.error('Error al obtener la ubicación:', error));
+            }
+
             if (track) {
-                navigator.geolocation.watchPosition(function (position) {
-                    var newLat = position.coords.latitude;
-                    var newLon = position.coords.longitude;
-
-                    userMarker.setLatLng([newLat, newLon]);
-                    routeControl.setWaypoints([
-                        L.latLng(newLat, newLon),
-                        L.latLng(destLat, destLon)
-                    ]);
-
-                    // Comprobar si el repartidor ha comenzado a moverse
-                    if (!notifiedStart) {
-                        notifiedStart = true;
-                        showStartAlert();
-                    }
-
-                    updateDistance(newLat, newLon);
-                }, function (error) {
-                    alert('Error en la geolocalización: ' + error.message);
-                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                setInterval(fetchLocation, 5000); // Obtener la ubicación cada 5 segundos
             }
 
             updateDistance(lat, lon);
