@@ -51,11 +51,12 @@
         var lon = parseFloat(urlParams.get('lon'));
         var destLat = parseFloat(urlParams.get('destLat'));
         var destLon = parseFloat(urlParams.get('destLon'));
-        var track = urlParams.get('track') === 'true';
+        var repartidorId = urlParams.get('id'); // ID del repartidor
         var notifiedStart = false; // Controlar si ya se hizo la alerta de inicio
         var notifiedNear = false;  // Controlar si ya se hizo la alerta de proximidad
 
-        if (!isNaN(lat) && !isNaN(lon) && !isNaN(destLat) && !isNaN(destLon)) {
+        // Verifica si las coordenadas y el ID son válidos
+        if (!isNaN(lat) && !isNaN(lon) && !isNaN(destLat) && !isNaN(destLon) && repartidorId) {
             var map = L.map('map').setView([lat, lon], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
@@ -89,8 +90,9 @@
                 }
             }
 
+            // Función para obtener la ubicación actual del repartidor
             function fetchLocation() {
-                fetch('get_location.php')
+                fetch(`get_location.php?id=${repartidorId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.lat && data.lon) {
@@ -104,18 +106,21 @@
                             ]);
 
                             updateDistance(newLat, newLon);
+                        } else {
+                            console.error('Error: ', data.error);
                         }
                     })
                     .catch(error => console.error('Error al obtener la ubicación:', error));
             }
 
+            // Configurar el intervalo de actualización
             if (track) {
                 setInterval(fetchLocation, 5000); // Obtener la ubicación cada 5 segundos
             }
 
             updateDistance(lat, lon);
         } else {
-            alert('Las coordenadas proporcionadas no son válidas.');
+            alert('Las coordenadas o el ID del repartidor no son válidos.');
         }
 
         // Función para mostrar la notificación de inicio y reproducir el sonido
